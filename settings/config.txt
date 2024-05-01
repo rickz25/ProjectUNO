@@ -1,7 +1,7 @@
 [tenant_config]
 
 #path tenant
-#sample path 'C:\xampp\htdocs\tenant_api\'
+#sample path "C:\xampp\htdocs\tenant_api\"
 tenant_path=C:\xampp\htdocs\tenant_api\ 
 
 #schedule task per second
