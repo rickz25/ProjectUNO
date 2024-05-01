@@ -1,0 +1,13 @@
+[tenant_config]
+
+#path tenant
+tenant_path=C:\xampp\htdocs\tenant_api\ 
+
+#schedule task per second
+schedule_start=5
+
+#schedule updater per minute
+schedule_updater=1
+
+#schedule setting per minute
+schedule_setting=1
