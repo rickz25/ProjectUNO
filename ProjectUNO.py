@@ -375,16 +375,16 @@ def check_schedule():
 
 threading.Thread(target=check_schedule, daemon=True).start()
 
-# def minimizeWindow():
-#     root.withdraw()
-#     root.overrideredirect(False)
-#     root.iconify()
+def minimizeWindow():
+    root.withdraw()
+    root.overrideredirect(False)
+    root.iconify()
 
-# def disable_event():
-#     pass
+def disable_event():
+    pass
 
-# root.resizable(False, False)
-# root.protocol("WM_DELETE_WINDOW", minimizeWindow)
+root.resizable(False, False)
+root.protocol("WM_DELETE_WINDOW", minimizeWindow)
 
 # run app
 root.mainloop()
