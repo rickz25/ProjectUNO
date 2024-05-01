@@ -25,11 +25,10 @@ fg_color_result = "#CBCFCB"
 title_bg ="#CB5F2F"
 fg_color_text = "#686C68"
 
-db = Database('db/database.db')
 config = configparser.ConfigParser()
 config.read(r'settings/config.txt') 
-
 tenantPath =  config.get('tenant_config', 'tenant_path')
+db = Database(f'{tenantPath}database/database.db')
 
 scheduleStart =  config.get('tenant_config', 'schedule_start')
 schedule_updater =  config.get('tenant_config', 'schedule_updater')
@@ -58,27 +57,29 @@ def manual_upload():
 	c3='php artisan cache:clear'
 	c4='php artisan route:cache'
 
-	exit_code = os.system(f'cmd /c "cd {tenantPath} && {c1} && {c2} && {c3} && {c4}"')
-
-
-	if exit_code == 0:
-		start = os.system(f'cmd /c "cd {tenantPath} && php artisan schedule:run"')
-		if start == 0:
+	# exit_code = os.system(f'cmd /c "cd {tenantPath} && {c1} && {c2} && {c3} && {c4}"')
+	process = subprocess.Popen(f"cd {tenantPath} && {c1} && {c2} && {c3} && {c4}", shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+	output, errors = process.communicate()
+	
+	if errors==None:
+		proc = subprocess.Popen(f"cd {tenantPath} && php artisan schedule:run", shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+		out, err = proc.communicate()
+		if err==None:
 			messagebox.showinfo('Success', 'Started manually!')
 		else:
-			messagebox.showerror('Error', 'Error on starting!')
+			messagebox.showerror('Error', err)
 	else:
-		messagebox.showerror('Error', 'Error on clear cache!')
+		messagebox.showerror('Error', errors)
 
 #schedule start
 def schedule_start():
 
-	start = os.system(f'cmd /c "cd {tenantPath} && php artisan schedule:run"')
-
-	if start == 0:
-		print('started')
-	else:
-		print('Error starting')
+	process = subprocess.Popen(f"cd {tenantPath} && php artisan schedule:run", shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+	output, error = process.communicate()
+	# if error==None:
+	# 	print('started')
+	# else:
+	# 	print(error)
 
 
 ### API REQUEST
@@ -374,16 +375,16 @@ def check_schedule():
 
 threading.Thread(target=check_schedule, daemon=True).start()
 
-def minimizeWindow():
-    root.withdraw()
-    root.overrideredirect(False)
-    root.iconify()
+# def minimizeWindow():
+#     root.withdraw()
+#     root.overrideredirect(False)
+#     root.iconify()
 
-def disable_event():
-    pass
+# def disable_event():
+#     pass
 
-root.resizable(False, False)
-root.protocol("WM_DELETE_WINDOW", minimizeWindow)
+# root.resizable(False, False)
+# root.protocol("WM_DELETE_WINDOW", minimizeWindow)
 
 # run app
 root.mainloop()
