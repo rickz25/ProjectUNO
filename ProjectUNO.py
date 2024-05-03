@@ -15,7 +15,15 @@ from zipfile import ZipFile
 import shutil 
 import configparser 
 import fnmatch
+import logging
 
+
+# Create and configure logger
+logging.basicConfig(filename="Logs/unoLog/logs.log",
+                    format='%(asctime)s %(message)s',
+                    filemode='w')
+logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)
 
 # set colours
 bg_color = "#CB5F2F"
@@ -51,91 +59,102 @@ else:
 
 #Manual send
 def manual_upload():
+	try:
+		c1='php artisan config:cache'
+		c2='php artisan config:clear'
+		c3='php artisan cache:clear'
+		c4='php artisan route:cache'
 
-	c1='php artisan config:cache'
-	c2='php artisan config:clear'
-	c3='php artisan cache:clear'
-	c4='php artisan route:cache'
-
-	# exit_code = os.system(f'cmd /c "cd {tenantPath} && {c1} && {c2} && {c3} && {c4}"')
-	process = subprocess.Popen(f"cd {tenantPath} && {c1} && {c2} && {c3} && {c4}", shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-	output, errors = process.communicate()
-	
-	if errors==None:
-		proc = subprocess.Popen(f"cd {tenantPath} && php artisan schedule:run", shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-		out, err = proc.communicate()
-		if err==None:
-			messagebox.showinfo('Success', 'Started manually!')
+		# exit_code = os.system(f'cmd /c "cd {tenantPath} && {c1} && {c2} && {c3} && {c4}"')
+ 	
+		process = subprocess.Popen(f"cd {tenantPath} && {c1} && {c2} && {c3} && {c4}", shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+		output, errors = process.communicate()
+		
+		if errors==None:
+			proc = subprocess.Popen(f"cd {tenantPath} && php artisan schedule:run", shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+			out, err = proc.communicate()
+			if err==None:
+				messagebox.showinfo('Success', 'Started manually!')
+			else:
+				messagebox.showerror('Error', err)
+				raise ValueError(errors)
 		else:
-			messagebox.showerror('Error', err)
-	else:
-		messagebox.showerror('Error', errors)
+			messagebox.showerror('Error', errors)
+			raise ValueError(errors)
+	except ValueError as ve:
+		logger.exception("Exception occurred: %s", str(ve))
 
 #schedule start
 def schedule_start():
-
-	process = subprocess.Popen(f"cd {tenantPath} && php artisan schedule:run", shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-	output, error = process.communicate()
-	# if error==None:
-	# 	print('started')
-	# else:
-	# 	print(error)
+	try:
+		process = subprocess.Popen(f"cd {tenantPath} && php artisan schedule:run", shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+		output, error = process.communicate()
+		if error==None:
+			print('started')
+		else:
+			raise ValueError("Error started.")
+	except ValueError as ve:
+		logger.exception("Exception occurred: %s", str(ve))
 
 
 ### API REQUEST
 def fileUpdater():
-	named_tuple = time.localtime() # get struct_time
-	filename_date = time.strftime("%m%d%Y_%H%M%S", named_tuple)
-	date = time.strftime("%m/%d/%Y, %H:%M:%S", named_tuple)
+	try:
+		named_tuple = time.localtime() # get struct_time
+		filename_date = time.strftime("%m%d%Y_%H%M%S", named_tuple)
+		date = time.strftime("%m/%d/%Y, %H:%M:%S", named_tuple)
 
-	#get record from database
-	record = db.fetchSetting()
-	cccode = record[1]
-	ip_server = record[3]
-	port = record[4]
+		#get record from database
+		record = db.fetchSetting()
+		cccode = record[1]
+		ip_server = record[3]
+		port = record[4]
 
-	auth_token='eyJhbGciOiJIUzI1NiJ9.eyJSb2xlIjoiQWRtaW4iLCJJc3N1ZXIiOiJJc3N1ZXIiLCJVc2VybmFtZSI6IkphdmFJblVzZSIsImV4cCI6MTY1NDc1NDg1NCwiaWF0IjoxNjU0NzU0ODU0fQ.p6WAfLuC39cMk3XEF4LcU5iZy1rzbL0VTKVpTY7mRGQ'
-	headers = {'Authorization': f'Bearer {auth_token}'}
-	data = {'cccode' : cccode}
+		auth_token='eyJhbGciOiJIUzI1NiJ9.eyJSb2xlIjoiQWRtaW4iLCJJc3N1ZXIiOiJJc3N1ZXIiLCJVc2VybmFtZSI6IkphdmFJblVzZSIsImV4cCI6MTY1NDc1NDg1NCwiaWF0IjoxNjU0NzU0ODU0fQ.p6WAfLuC39cMk3XEF4LcU5iZy1rzbL0VTKVpTY7mRGQ'
+		headers = {'Authorization': f'Bearer {auth_token}'}
+		data = {'cccode' : cccode}
 
-	baseurl = f'http://{ip_server}:{port}/api/get-file'
-	baseurl_status = f'http://{ip_server}:{port}/api/move-file'
+		baseurl = f'http://{ip_server}:{port}/api/get-file'
+		baseurl_status = f'http://{ip_server}:{port}/api/move-file'
 
-	request = requests.post(baseurl, json=data, headers=headers)
-	# print(request.content)
+		request = requests.post(baseurl, json=data, headers=headers)
+		# print(request.content)
 
-	zip = ZipFile(BytesIO(request.content))
-	zip.extractall("Files")
+		zip = ZipFile(BytesIO(request.content))
+		zip.extractall("Files")
 
-	pattern = ['*.php','*.env','*.db','*.json']
-	path = 'Files'
+		pattern = ['*.php','*.env','*.db','*.json']
+		path = 'Files'
 
-	for dirpath, dirnames, filenames in os.walk(path):
+		for dirpath, dirnames, filenames in os.walk(path):
 
-		if not filenames:
-			continue
-		for ext in pattern:
-			files = fnmatch.filter(filenames, ext)
-			if files:
-				for file in files:
-					Str ='{}/{}'.format(dirpath, file)
-					folderpath = Str[17:100]
-					fullpath = tenantPath+folderpath
-					if os.path.exists(fullpath) :
-						os.remove(fullpath)
-					shutil.move('Files/tenant_api/'+folderpath, fullpath, copy_function = shutil.copytree)
-					if request.status_code  == 200:
-						r =requests.post(baseurl_status, json=data, headers=headers)
-						if r.status_code==200:
-							create_txt_path=f'{filename_date}.txt'
-							f = open('logs/'+create_txt_path, "a")
-							f.write(f'{date} - ({fullpath}), updated.\n')
-							f.close()
-						else:
-							create_txt_path=f'{filename_date}.txt'
-							f = open('logs/'+create_txt_path, "a")
-							f.write(f'{date} - Error update.\n')
-							f.close()
+			if not filenames:
+				continue
+			for ext in pattern:
+				files = fnmatch.filter(filenames, ext)
+				if files:
+					for file in files:
+						Str ='{}/{}'.format(dirpath, file)
+						folderpath = Str[17:100]
+						fullpath = tenantPath+folderpath
+						if os.path.exists(fullpath) :
+							os.remove(fullpath)
+						shutil.move('Files/tenant_api/'+folderpath, fullpath, copy_function = shutil.copytree)
+						if request.status_code  == 200:
+							r =requests.post(baseurl_status, json=data, headers=headers)
+							if r.status_code==200:
+								create_txt_path=f'{filename_date}.txt'
+								f = open('Logs/updaterLog'+create_txt_path, "a")
+								f.write(f'{date} - ({fullpath}), updated.\n')
+								f.close()
+							else:
+								create_txt_path=f'{filename_date}.txt'
+								f = open('Logs/updaterLog'+create_txt_path, "a")
+								f.write(f'{date} - Error update.\n')
+								f.close()
+
+	except Exception as e:
+   		logger.error('Error at %s', 'Updater', exc_info=e)
 
 def clear_widgets(frame):
 	# select all frame widgets and delete them
@@ -364,27 +383,30 @@ load_frame1()
 
 ##Schedule cron job
 # schedule.every(2).seconds.do(load_frame1)
-schedule.every(schedule_setting).minutes.do(load_frame1)
-schedule.every(schedule_updater).minutes.do(fileUpdater)
-schedule.every(scheduleStart).seconds.do(schedule_start)
+try:
+	schedule.every(schedule_setting).minutes.do(load_frame1)
+	schedule.every(schedule_updater).minutes.do(fileUpdater)
+	schedule.every(scheduleStart).seconds.do(schedule_start)
 
-def check_schedule():
-    while True:
-        schedule.run_pending()
-        time.sleep(1)
+	def check_schedule():
+		while True:
+			schedule.run_pending()
+			time.sleep(1)
 
-threading.Thread(target=check_schedule, daemon=True).start()
+	threading.Thread(target=check_schedule, daemon=True).start()
+except Exception as e:
+   logger.error('Error at %s', 'Scheduler', exc_info=e)
 
-def minimizeWindow():
-    root.withdraw()
-    root.overrideredirect(False)
-    root.iconify()
+# def minimizeWindow():
+#     root.withdraw()
+#     root.overrideredirect(False)
+#     root.iconify()
 
-def disable_event():
-    pass
+# def disable_event():
+#     pass
 
-root.resizable(False, False)
-root.protocol("WM_DELETE_WINDOW", minimizeWindow)
+# root.resizable(False, False)
+# root.protocol("WM_DELETE_WINDOW", minimizeWindow)
 
 # run app
 root.mainloop()
