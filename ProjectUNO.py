@@ -203,6 +203,7 @@ def load_frame1():
 
 	#get record
 	status = db.getStatus()
+	print(status[3])
 
 	current_date = StringVar()
 	# sending_text = StringVar()
@@ -397,16 +398,16 @@ try:
 except Exception as e:
    logger.error('Error at %s', 'Scheduler', exc_info=e)
 
-# def minimizeWindow():
-#     root.withdraw()
-#     root.overrideredirect(False)
-#     root.iconify()
+def minimizeWindow():
+    root.withdraw()
+    root.overrideredirect(False)
+    root.iconify()
 
-# def disable_event():
-#     pass
+def disable_event():
+    pass
 
-# root.resizable(False, False)
-# root.protocol("WM_DELETE_WINDOW", minimizeWindow)
+root.resizable(False, False)
+root.protocol("WM_DELETE_WINDOW", minimizeWindow)
 
 # run app
 root.mainloop()
