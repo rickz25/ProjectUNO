@@ -16,6 +16,7 @@ import shutil
 import configparser 
 import fnmatch
 import logging
+from PIL import Image
 
 
 # Create and configure logger
@@ -26,11 +27,10 @@ logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
 
 # set colours
-bg_color = "#CB5F2F"
+bg_color = "#f24f00"
 fg_color = "#2A1C06"
-title_color = "#28393a"
+title_color = "white"
 fg_color_result = "#CBCFCB"
-title_bg ="#CB5F2F"
 fg_color_text = "#686C68"
 
 config = configparser.ConfigParser()
@@ -75,6 +75,31 @@ def manual_upload():
 			out, err = proc.communicate()
 			if err==None:
 				messagebox.showinfo('Success', 'Started manually!')
+			else:
+				messagebox.showerror('Error', err)
+				raise ValueError(errors)
+		else:
+			messagebox.showerror('Error', errors)
+			raise ValueError(errors)
+	except ValueError as ve:
+		logger.exception("Exception occurred: %s", str(ve))\
+		
+#Auto clear cache
+def auto_clear_cache():
+	try:
+		c1='php artisan config:cache'
+		c2='php artisan config:clear'
+		c3='php artisan cache:clear'
+		c4='php artisan route:cache'
+ 	
+		process = subprocess.Popen(f"cd {tenantPath} && {c1} && {c2} && {c3} && {c4}", shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+		output, errors = process.communicate()
+		
+		if errors==None:
+			proc = subprocess.Popen(f"cd {tenantPath} && php artisan schedule:run", shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+			out, err = proc.communicate()
+			if err==None:
+				print('cleared')
 			else:
 				messagebox.showerror('Error', err)
 				raise ValueError(errors)
@@ -199,7 +224,7 @@ def load_frame1():
 	frame1.pack_propagate(False)
 
 	# create label widget for instructions
-	Label(frame1, text="ProjectUNO Application",fg=title_color,bg=title_bg,font=titleFont,borderwidth=1, relief="groove").grid(row=0, column=1, pady=25,sticky=W)
+	Label(frame1, text="",fg=title_color,font=titleFont,borderwidth=1,bg=bg_color).grid(row=0, column=1, pady=10,sticky=W)
 
 	#get record
 	status = db.getStatus()
@@ -207,14 +232,15 @@ def load_frame1():
 
 	current_date = StringVar()
 	# sending_text = StringVar()
-	Label(frame1, text='Current Date:', font=labelFont, fg=fg_color, bg=bg_color, pady=10).grid(row=2, column=0, sticky=W,padx=10)
-	Label(frame1, bg=bg_color,font=normalFont, fg=fg_color_result, textvariable=current_date, borderwidth=1, relief="ridge").grid(row=2, column=1,sticky=W)
-	sending_text = Label(frame1, font=labelFont, fg="#CBCFCB",bg=bg_color, pady=10)
-	sending_text.grid(row=3, column=1, sticky=W)
+	Label(frame1, text='Current Date:', font=labelFont, fg=fg_color, bg=bg_color,anchor="w", justify=LEFT).grid(row=2, column=0,padx=10,pady=10,sticky=W)
+	Label(frame1,font=normalFont, fg=fg_color_result, textvariable=current_date, bg=bg_color, borderwidth=1).grid(row=2, column=1,sticky=W)
 	current_date.set(status[3])
 
+	sending_text = Label(frame1, font=labelFont, fg="#CBCFCB", pady=10, bg=bg_color)
+	sending_text.grid(row=3, column=1, sticky=W)
+
 	#Green=0, Orange=1, Red=2
-	Label(frame1, text='Sending:', font=labelFont, fg=fg_color, bg=bg_color, pady=10).grid(row=3, column=0, sticky=W,padx=10)
+	Label(frame1, text='Sending:', font=labelFont, fg=fg_color, pady=10, bg=bg_color,anchor="w", justify=LEFT).grid(row=3, column=0,padx=10,sticky=W)
 	if status[1]==0:
 		logo_img = ImageTk.PhotoImage(file="assets/icon/red.png")
 		logo_widget = Label(frame1, image=logo_img, bg=bg_color)
@@ -236,8 +262,8 @@ def load_frame1():
 	
 
 	connection = StringVar()
-	Label(frame1, text='Connection:', font=labelFont, fg=fg_color, bg=bg_color, pady=10).grid(row=4, column=0, sticky=W,padx=10)
-	conn = Label(frame1, bg=bg_color, fg=fg_color_result,font=normalFont,textvariable=connection,borderwidth=1, relief="ridge")
+	Label(frame1, text='Connection:', font=labelFont, fg=fg_color, pady=10, bg=bg_color,anchor="w", justify=LEFT).grid(row=4, column=0,padx=10,sticky=W)
+	conn = Label(frame1, fg=fg_color_result,font=normalFont,textvariable=connection,borderwidth=1, bg=bg_color)
 	conn.grid(row=4, column=1,sticky=W)
 
 	if status[1]==1:
@@ -248,32 +274,37 @@ def load_frame1():
 		conn.config(fg="#892907")
 	
 	# create button widget
-	Button(frame1, text='Other Settings',font=buttonFont, width=14, bg="#28393a", fg="white", cursor="hand2", command=lambda:load_frame2()).grid(row=5, column=0, pady=10,sticky=W, padx=15)
-	Button(frame1, text='Test Connection',font=buttonFont, width=14, bg="#28393a", fg="white", cursor="hand2", command=lambda:load_frame3()).grid(row=5, column=1, pady=10, padx=25,sticky=W)
-	Button(frame1, text='Manual Upload',font=buttonFont, width=14, bg="#28393a", fg="white", cursor="hand2", command=lambda:manual_upload()).grid(row=5, column=1, pady=1,padx=190,sticky=W)
+	Button(frame1, text='Other Settings',font=buttonFont, width=12, bg="#999999", highlightthickness=0, bd=0, fg="white", cursor="hand2", command=lambda:load_frame2()).grid(row=5, column=0, pady=10,sticky=W, padx=7)
+	Button(frame1, text='Test Connection',font=buttonFont, width=12, bg="#999999", highlightthickness=0, bd=0, fg="white", cursor="hand2", command=lambda:load_frame3()).grid(row=5, column=1, pady=10, padx=0,sticky=W)
+	Button(frame1, text='Manual Upload',font=buttonFont, width=12, bg="#999999", highlightthickness=0, bd=0, fg="white", cursor="hand2", command=lambda:manual_upload()).grid(row=5, column=1, pady=1,padx=119,sticky=W)
+
+	# log_img = ImageTk.PhotoImage(file="assets/icon/bottom_logo.png")
+	# log_widget = Label(frame1, image=log_img, bg=bg_color)
+	# log_widget.image = log_img
+	# log_widget.grid(row=7, column=0)
 
 def load_frame2():
 	clear_widgets(frame1)
 	# stack frame 2 above frame 1
 	frame2.tkraise()
 
-	Label(frame2, text="Other Settings",fg=title_color,bg=title_bg,font=titleFont,borderwidth=1, relief="groove").grid(row=0, column=0, pady=10,sticky=W, padx=10)
+	Label(frame2, text="Other Settings",fg=title_color,font=titleFont,borderwidth=1, relief="groove",bg=bg_color).grid(row=0, column=0, pady=10,sticky=W, padx=10)
 
 	# CCCODE
 	cccode = StringVar()
-	Label(frame2, text='CCCODE:', font=labelFont, fg=fg_color,bg=bg_color, pady=10).grid(row=2, column=0, sticky=W,padx=10)
+	Label(frame2, text='CCCODE:', font=labelFont, fg=fg_color, pady=10, bg=bg_color).grid(row=2, column=0, sticky=W,padx=10)
 	Entry(frame2, width=17,font=normalFont, fg=fg_color_text, textvariable=cccode).grid(row=2, column=1, sticky=W,padx=10)
 	# POS VENDOR CODE
 	pos_vendor_code = StringVar()
-	Label(frame2, text='POS VENDOR CODE:', font=labelFont, fg=fg_color, bg=bg_color, pady=10).grid(row=3, column=0, sticky=W,padx=10)
+	Label(frame2, text='POS VENDOR CODE:', font=labelFont, fg=fg_color, pady=10, bg=bg_color).grid(row=3, column=0, sticky=W,padx=10)
 	Entry(frame2, width=17,font=normalFont, fg=fg_color_text, textvariable=pos_vendor_code).grid(row=3, column=1, sticky=W,padx=10)
 	# Autopoll IP Server
 	ip_server = StringVar()
-	Label(frame2, text='AUTOPOLL IP SERVER:', font=labelFont, fg=fg_color, bg=bg_color, pady=10).grid(row=4, column=0, sticky=W,padx=10)
-	Entry(frame2, width=17,font=normalFont, fg=fg_color_text, textvariable=ip_server).grid(row=4, column=1, sticky=W,padx=10)
+	Label(frame2, text='AUTOPOLL IP SERVER:', font=labelFont, fg=fg_color, pady=10, bg=bg_color).grid(row=4, column=0, sticky=W,padx=10)
+	Entry(frame2, width=17,font=normalFont, fg=fg_color_text, textvariable=ip_server, show="*").grid(row=4, column=1, sticky=W,padx=10)
 	# Port
 	port = StringVar()
-	Label(frame2, text='PORT:', font=labelFont, fg=fg_color, bg=bg_color, pady=10).grid(row=5, column=0, sticky=W,padx=10)
+	Label(frame2, text='PORT:', font=labelFont, fg=fg_color, pady=10, bg=bg_color).grid(row=5, column=0, sticky=W,padx=10)
 	Entry(frame2, textvariable=port, fg=fg_color_text, width=17,font=normalFont ).grid(row=5, column=1, sticky=W,padx=10)
 
 	#Set record from database
@@ -284,8 +315,8 @@ def load_frame2():
 	port.set(record[4])
 
 	# 'back' button widget
-	Button(frame2,text="<< Back",font=buttonFont,bg="#28393a",fg="white",cursor="hand2", width=8, activebackground="#badee2",activeforeground="black",command=lambda:load_frame1()).grid(row=7, column=1,sticky=W,padx=10)
-	Button(frame2,text="Update",font=buttonFont,bg="#28393a",fg="white",cursor="hand2", width=8, activebackground="#badee2",activeforeground="black",command=lambda:update(cccode.get(), ip_server.get(),pos_vendor_code.get(),port.get())).grid(row=7, column=1,sticky='W',padx=92)
+	Button(frame2,text="<< Back",font=buttonFont,bg="#999999",fg="white",cursor="hand2", width=8, activebackground="#badee2", highlightthickness=0, bd=0,activeforeground="black",command=lambda:load_frame1()).grid(row=7, column=1,sticky=W,padx=10)
+	Button(frame2,text="Update",font=buttonFont,bg="#999999",fg="white",cursor="hand2", width=8, activebackground="#badee2", highlightthickness=0, bd=0,activeforeground="black",command=lambda:update(cccode.get(), ip_server.get(),pos_vendor_code.get(),port.get())).grid(row=7, column=1,sticky='W',padx=92)
  
  
 def load_frame3():
@@ -296,7 +327,7 @@ def load_frame3():
 	#get record
 	conn = db.fetchSetting()
 
-	Label(frame3, text="Test Connection",fg=title_color,bg=title_bg,font=titleFont,borderwidth=1, relief="groove").grid(row=0, column=0, pady=15,sticky=W,padx=10)
+	Label(frame3, text="Test Connection",fg=title_color,font=titleFont,borderwidth=1, relief="groove",bg=bg_color).grid(row=0, column=0, pady=15,sticky=W,padx=10)
 
 	def ping():
 		con = db.fetchSetting()
@@ -316,67 +347,83 @@ def load_frame3():
 	
 
 	# ping
-	Label(frame3, text='PING Autopoll IP Server:', font=labelFont, fg=fg_color, bg=bg_color, pady=10).grid(row=2, column=0, sticky=W,padx=10)
-	Button(frame3,text="Check",font=buttonFont,bg="#28393a",fg="white",cursor="hand2",width=8,activebackground="#badee2",activeforeground="black",command=lambda:ping()).grid(row=2, column=1,sticky=W)
-	pingText=Label(frame3, bg=bg_color, fg=fg_color_result,font=normalFont)
-	pingText.grid(row=2, column=2,sticky=W)
+	Label(frame3, text='PING Autopoll IP Server:', font=labelFont, fg=fg_color, pady=10,bg=bg_color).grid(row=2, column=0, sticky=W,padx=10)
+	Button(frame3,text="Check",font=buttonFont,bg="#999999",fg="white",cursor="hand2",width=8,activebackground="#badee2", highlightthickness=0, bd=0, activeforeground="black",command=lambda:ping()).grid(row=2, column=1,sticky=W)
+	pingText=Label(frame3, fg=fg_color_result,font=normalFont, bg=bg_color,width=20)
+	pingText.grid(row=3, column=1,sticky=W)
 	# Telnet
-	Label(frame3, text='Telnet:', font=labelFont, fg=fg_color, bg=bg_color, pady=10).grid(row=3, column=0, sticky=W,padx=10)
-	Button(frame3,text="Check",font=buttonFont,bg="#28393a",fg="white",cursor="hand2",width=8,activebackground="#badee2",activeforeground="black",command=lambda:telnet()).grid(row=3, column=1,sticky=W)
-	telnetText = Label(frame3, bg=bg_color,font=normalFont, fg=fg_color_result)
-	telnetText.grid(row=3, column=2,sticky=W)
+	Label(frame3, text='Telnet:', font=labelFont, fg=fg_color, pady=10,bg=bg_color).grid(row=4, column=0, sticky=W,padx=10)
+	Button(frame3,text="Check",font=buttonFont,bg="#999999",fg="white",cursor="hand2",width=8,activebackground="#badee2", highlightthickness=0, bd=0, activeforeground="black",command=lambda:telnet()).grid(row=4, column=1,sticky=W)
+	telnetText = Label(frame3,font=normalFont, fg=fg_color_result, bg=bg_color, width=20)
+	telnetText.grid(row=5, column=1,sticky=W)
 
-	Button(frame3,text="<< Back",font=buttonFont,bg="#28393a",fg="white",cursor="hand2",width=8,activebackground="#badee2",activeforeground="black",command=lambda:load_frame1()).grid(row=5, column=1,pady=20, sticky=W)
+	Button(frame3,text="<< Back",font=buttonFont,bg="#999999",fg="white",cursor="hand2",width=8,activebackground="#badee2", highlightthickness=0, bd=0, activeforeground="black",command=lambda:load_frame1()).grid(row=6, column=1,pady=20, sticky=W)
  
 
 # initiallize app with basic settings
 root = Tk()
-root.title('ProjectUNO')
+root.title('')
 root.iconbitmap('assets/icon/settings.ico')
 root.eval("tk::PlaceWindow . center")
 root.configure(background=bg_color)
-root.geometry('480x280')
+root.geometry('460x265')
+
+image = Image.open("assets/icon/bottom_logo.png")
+ 
+# Resize the image using resize() method
+resize_image = image.resize((90, 25))
+ 
+img = ImageTk.PhotoImage(resize_image)
+ 
+# create label and add resize image
+label1 = Label(image=img,bg=bg_color)
+label1.image = img
+label1.grid(row=1, column=0,pady=1, padx=10, sticky=W)
 
 # place app in the center of the screen (alternative approach to root.eval())
 # x = root.winfo_screenwidth() // 2
 # y = int(root.winfo_screenheight() * 0.1)
 # root.geometry('500x600+' + str(x) + '+' + str(y))
- 
-# create a frame widgets
-frame1 = Frame(root, width=500, height=600, bg=bg_color)
-frame2 = Frame(root, bg=bg_color)
-frame3 = Frame(root, bg=bg_color)
 
 # load custom fonts
 titleFont = Font(
-	family="Helvetica",
-	size=16,
+	family="arial",
+	size=12,
 	weight="bold"
 )
 buttonFont = Font(
-	family="Helvetica",
-	size=10,
-	weight="bold"
+	family="arial",
+	size=11,
+	
 )
 labelFont = Font(
-	family="Helvetica",
+	family="arial",
 	size=12,
-	weight="bold"
+	
 )
 resultFont = Font(
-	family="Helvetica",
+	family="arial",
 	size=12,
-	weight="bold"
+	
 )
 normalFont = Font(
-	family="Helvetica",
+	family="arial",
 	size=12,
-	weight="bold"
+	
 )
+
+# create a frame widgets
+frame1 = Frame(root, bg=bg_color,relief= 'sunken')
+frame2 = Frame(root, bg=bg_color)
+frame3 = Frame(root,bg=bg_color)
+root.grid_rowconfigure(0, weight=1)
+root.grid_columnconfigure(0, weight=1)
 
 # place frame widgets in window
 for frame in (frame1, frame2, frame3):
-	frame.grid(row=0, column=0, sticky="nesw")
+	frame.grid(row=0, column=0, sticky="nsew", padx= 50)
+	
+	
 
 # load the first frame
 load_frame1()
@@ -388,6 +435,7 @@ try:
 	schedule.every(schedule_setting).minutes.do(load_frame1)
 	schedule.every(schedule_updater).minutes.do(fileUpdater)
 	schedule.every(scheduleStart).seconds.do(schedule_start)
+	schedule.every(5).minutes.do(auto_clear_cache)
 
 	def check_schedule():
 		while True:
