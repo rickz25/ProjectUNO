@@ -2,6 +2,7 @@
 import requests
 import os  
 from io import BytesIO
+from pathlib import Path
 from zipfile import ZipFile
 import shutil 
 from db import Database
@@ -33,38 +34,46 @@ baseurl = f'http://{ip_server}:{port}/api/get-file'
 baseurl_status = f'http://{ip_server}:{port}/api/move-file'
 
 request = requests.post(baseurl, json=data, headers=headers)
-print(request.content)
+# print(request.content)
 
-# zip = ZipFile(BytesIO(request.content))
-# zip.extractall("Files")
+zip = ZipFile(BytesIO(request.content))
+zip.extractall("Files")
 
-# pattern = ['*.php','*.env','*.db','*.json']
-# path = 'Files'
+pattern = ['*.php','*.env','*.db','*.json']
+path = 'Files'
 
-# for dirpath, dirnames, filenames in os.walk(path):
+for dirpath, dirnames, filenames in os.walk(path):
 
-#     if not filenames:
-#         continue
-#     for ext in pattern:
-#         files = fnmatch.filter(filenames, ext)
-#         if files:
-#             for file in files:
-#                 Str ='{}/{}'.format(dirpath, file)
-#                 folderpath = Str[17:100]
-#                 fullpath = tenantPath+folderpath
-#                 if os.path.exists(fullpath) :
-#                     os.remove(fullpath)
-#                 shutil.move('Files/tenant_api/'+folderpath, fullpath, copy_function = shutil.copytree)
-#                 if request.status_code  == 200:
-#                     r =requests.post(baseurl_status, json=data, headers=headers)
-#                     if r.status_code==200:
-#                         create_txt_path=f'{filename_date}.txt'
-#                         f = open('logs/'+create_txt_path, "a")
-#                         f.write(f'{date} - ({fullpath}), updated.\n')
-#                         f.close()
-#                     else:
-#                         create_txt_path=f'{filename_date}.txt'
-#                         f = open('logs/'+create_txt_path, "a")
-#                         f.write(f'{date} - Error update.\r\n')
-#                         f.close()
+    if not filenames:
+        continue
+    for ext in pattern:
+        files = fnmatch.filter(filenames, ext)
+        if files:
+            for file in files:
+                Str ='{}/{}'.format(dirpath, file)
+                folderpath = Str[17:100]
+                fullpath = tenantPath+folderpath
+                # if os.path.exists(fullpath) :
+                #     os.remove(fullpath)
+                
+                ispath = Path(fullpath)
+                if ispath.exists() and ispath.is_dir():
+                    shutil.rmtree(ispath)
+                # shutil.move('Files/tenant_api/'+folderpath, fullpath, copy_function = shutil.copytree)
+                currentpath = f'{Path().absolute()}/Files/tenant_api/{folderpath}'
+                # os.replace(currentpath, fullpath)
+                shutil.move(currentpath, fullpath)
+                
+                if request.status_code  == 200:
+                    r =requests.post(baseurl_status, json=data, headers=headers)
+                    if r.status_code==200:
+                        create_txt_path=f'{filename_date}.txt'
+                        f = open('logs/'+create_txt_path, "a")
+                        f.write(f'{date} - ({fullpath}), updated.\n')
+                        f.close()
+                    else:
+                        create_txt_path=f'{filename_date}.txt'
+                        f = open('logs/'+create_txt_path, "a")
+                        f.write(f'{date} - Error update.\r\n')
+                        f.close()
              

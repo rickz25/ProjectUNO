@@ -10,6 +10,7 @@ import time
 import threading
 import requests
 import os  
+from pathlib import Path
 from io import BytesIO
 from zipfile import ZipFile
 import shutil 
@@ -143,7 +144,6 @@ def fileUpdater():
 		baseurl_status = f'http://{ip_server}:{port}/api/move-file'
 
 		request = requests.post(baseurl, json=data, headers=headers)
-		# print(request.content)
 
 		zip = ZipFile(BytesIO(request.content))
 		zip.extractall("Files")
@@ -162,9 +162,13 @@ def fileUpdater():
 						Str ='{}/{}'.format(dirpath, file)
 						folderpath = Str[17:100]
 						fullpath = tenantPath+folderpath
-						if os.path.exists(fullpath) :
-							os.remove(fullpath)
-						shutil.move('Files/tenant_api/'+folderpath, fullpath, copy_function = shutil.copytree)
+						ispath = Path(fullpath)
+						if ispath.exists() and ispath.is_dir():
+							shutil.rmtree(ispath)
+       
+						currentpath = f'{Path().absolute()}/Files/tenant_api/{folderpath}'
+						shutil.move(currentpath, fullpath) # move file to its destination
+      
 						if request.status_code  == 200:
 							r =requests.post(baseurl_status, json=data, headers=headers)
 							if r.status_code==200:
@@ -218,13 +222,14 @@ def telnet2(ip, port):
 
 def load_frame1():
 	clear_widgets(frame2)
+	clear_widgets(frame3)
 	# stack frame 1 above frame 2
 	frame1.tkraise()
 	# prevent widgets from modifying the frame
 	frame1.pack_propagate(False)
 
 	# create label widget for instructions
-	Label(frame1, text="",fg=title_color,font=titleFont,borderwidth=1,bg=bg_color).grid(row=0, column=1, pady=10,sticky=W)
+	# Label(frame1, text="",fg=title_color,font=titleFont,borderwidth=1,bg=bg_color).grid(row=0, column=1, pady=10,sticky=W)
 
 	#get record
 	status = db.getStatus()
@@ -293,19 +298,19 @@ def load_frame2():
 	# CCCODE
 	cccode = StringVar()
 	Label(frame2, text='CCCODE:', font=labelFont, fg=fg_color, pady=10, bg=bg_color).grid(row=2, column=0, sticky=W,padx=10)
-	Entry(frame2, width=17,font=normalFont, fg=fg_color_text, textvariable=cccode).grid(row=2, column=1, sticky=W,padx=10)
+	Entry(frame2, width=20,font=normalFont, fg=fg_color_text, textvariable=cccode).grid(row=2, column=1, sticky=W,padx=10)
 	# POS VENDOR CODE
 	pos_vendor_code = StringVar()
 	Label(frame2, text='POS VENDOR CODE:', font=labelFont, fg=fg_color, pady=10, bg=bg_color).grid(row=3, column=0, sticky=W,padx=10)
-	Entry(frame2, width=17,font=normalFont, fg=fg_color_text, textvariable=pos_vendor_code).grid(row=3, column=1, sticky=W,padx=10)
+	Entry(frame2, width=20,font=normalFont, fg=fg_color_text, textvariable=pos_vendor_code).grid(row=3, column=1, sticky=W,padx=10)
 	# Autopoll IP Server
 	ip_server = StringVar()
 	Label(frame2, text='AUTOPOLL IP SERVER:', font=labelFont, fg=fg_color, pady=10, bg=bg_color).grid(row=4, column=0, sticky=W,padx=10)
-	Entry(frame2, width=17,font=normalFont, fg=fg_color_text, textvariable=ip_server, show="*").grid(row=4, column=1, sticky=W,padx=10)
+	Entry(frame2, width=20,font=normalFont, fg=fg_color_text, textvariable=ip_server, show="*").grid(row=4, column=1, sticky=W,padx=10)
 	# Port
 	port = StringVar()
 	Label(frame2, text='PORT:', font=labelFont, fg=fg_color, pady=10, bg=bg_color).grid(row=5, column=0, sticky=W,padx=10)
-	Entry(frame2, textvariable=port, fg=fg_color_text, width=17,font=normalFont ).grid(row=5, column=1, sticky=W,padx=10)
+	Entry(frame2, textvariable=port, fg=fg_color_text, width=20,font=normalFont ).grid(row=5, column=1, sticky=W,padx=10)
 
 	#Set record from database
 	record = db.fetchSetting()
@@ -315,8 +320,8 @@ def load_frame2():
 	port.set(record[4])
 
 	# 'back' button widget
-	Button(frame2,text="<< Back",font=buttonFont,bg="#999999",fg="white",cursor="hand2", width=8, activebackground="#badee2", highlightthickness=0, bd=0,activeforeground="black",command=lambda:load_frame1()).grid(row=7, column=1,sticky=W,padx=10)
-	Button(frame2,text="Update",font=buttonFont,bg="#999999",fg="white",cursor="hand2", width=8, activebackground="#badee2", highlightthickness=0, bd=0,activeforeground="black",command=lambda:update(cccode.get(), ip_server.get(),pos_vendor_code.get(),port.get())).grid(row=7, column=1,sticky='W',padx=92)
+	Button(frame2,text="<< Back",font=buttonFont,bg="#999999",fg="white",cursor="hand2", width=9, activebackground="#badee2", highlightthickness=0, bd=0,activeforeground="black",command=lambda:load_frame1()).grid(row=7, column=1,sticky=W,padx=10)
+	Button(frame2,text="Update",font=buttonFont,bg="#999999",fg="white",cursor="hand2", width=9, activebackground="#badee2", highlightthickness=0, bd=0,activeforeground="black",command=lambda:update(cccode.get(), ip_server.get(),pos_vendor_code.get(),port.get())).grid(row=7, column=1,sticky='W',padx=110)
  
  
 def load_frame3():
@@ -372,13 +377,14 @@ image = Image.open("assets/icon/bottom_logo.png")
  
 # Resize the image using resize() method
 resize_image = image.resize((90, 25))
- 
 img = ImageTk.PhotoImage(resize_image)
- 
 # create label and add resize image
-label1 = Label(image=img,bg=bg_color)
+label1 = Label(root, image=img,bg=bg_color)
 label1.image = img
 label1.grid(row=1, column=0,pady=1, padx=10, sticky=W)
+
+version = Label(root, text='v2.0.2',bg=bg_color,fg="white")
+version.grid(row=1, column=1,sticky='e')
 
 # place app in the center of the screen (alternative approach to root.eval())
 # x = root.winfo_screenwidth() // 2
@@ -398,7 +404,7 @@ buttonFont = Font(
 )
 labelFont = Font(
 	family="arial",
-	size=12,
+	size=11,
 	
 )
 resultFont = Font(
@@ -421,7 +427,7 @@ root.grid_columnconfigure(0, weight=1)
 
 # place frame widgets in window
 for frame in (frame1, frame2, frame3):
-	frame.grid(row=0, column=0, sticky="nsew", padx= 50)
+	frame.grid(row=0, column=0, padx= 25)
 	
 	
 
