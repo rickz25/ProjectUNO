@@ -8,7 +8,10 @@ import shutil
 from db import Database
 import time
 import fnmatch
-import configparser 
+import configparser
+import platform
+import socket
+import zipfile
 
 config = configparser.ConfigParser()
 config.read(r'settings/config.txt') 
@@ -33,47 +36,76 @@ data = {'cccode' : cccode}
 baseurl = f'http://{ip_server}:{port}/api/get-file'
 baseurl_status = f'http://{ip_server}:{port}/api/move-file'
 
-request = requests.post(baseurl, json=data, headers=headers)
-# print(request.content)
+#Telnet
+def telnet2(ip, port):
+	s = socket.socket(socket.AF_INET , socket.SOCK_STREAM)
+	try:
+		s.connect((ip , int(port)))
+		s.shutdown(2)
+		return True
+	except:
+		return False 
 
-zip = ZipFile(BytesIO(request.content))
-zip.extractall("Files")
+def fileupdater():
+    result = telnet2(ip_server, int(port)) 
+    if result:
+        request = requests.post(baseurl, json=data, headers=headers)
+        if zipfile.is_zipfile(BytesIO(request.content)):
+            zip = ZipFile(BytesIO(request.content))
+            zip.extractall("Files")
 
-pattern = ['*.php','*.env','*.db','*.json']
-path = 'Files'
+            pattern = ['*.php','*.env','*.db','*.json']
+            path = 'Files'
 
-for dirpath, dirnames, filenames in os.walk(path):
+            for dirpath, dirnames, filenames in os.walk(path):
 
-    if not filenames:
-        continue
-    for ext in pattern:
-        files = fnmatch.filter(filenames, ext)
-        if files:
-            for file in files:
-                Str ='{}/{}'.format(dirpath, file)
-                folderpath = Str[17:100]
-                fullpath = tenantPath+folderpath
-                # if os.path.exists(fullpath) :
-                #     os.remove(fullpath)
-                
-                ispath = Path(fullpath)
-                if ispath.exists() and ispath.is_dir():
-                    shutil.rmtree(ispath)
-                # shutil.move('Files/tenant_api/'+folderpath, fullpath, copy_function = shutil.copytree)
-                currentpath = f'{Path().absolute()}/Files/tenant_api/{folderpath}'
-                # os.replace(currentpath, fullpath)
-                shutil.move(currentpath, fullpath)
-                
-                if request.status_code  == 200:
-                    r =requests.post(baseurl_status, json=data, headers=headers)
-                    if r.status_code==200:
-                        create_txt_path=f'{filename_date}.txt'
-                        f = open('logs/'+create_txt_path, "a")
-                        f.write(f'{date} - ({fullpath}), updated.\n')
-                        f.close()
-                    else:
-                        create_txt_path=f'{filename_date}.txt'
-                        f = open('logs/'+create_txt_path, "a")
-                        f.write(f'{date} - Error update.\r\n')
-                        f.close()
+                if not filenames:
+                    continue
+                for ext in pattern:
+                    files = fnmatch.filter(filenames, ext)
+                    if files:
+                        for file in files:
+                            Str ='{}/{}'.format(dirpath, file)
+                            folderpath = Str[17:100]
+                            fullpath = tenantPath+folderpath
+                            updatePath = f'{Path().absolute()}/Files/tenant_api/{folderpath}'
+                            # if os.path.exists(fullpath) :
+                            #     os.remove(fullpath)
+                            if platform.system() == 'Windows':
+                                updatedsize = os.path.getsize(updatePath)
+                                currentsize = os.path.getsize(fullpath)
+                                if(updatedsize != currentsize):
+                                    ispath = Path(fullpath)
+                                    if ispath.exists() and ispath.is_dir():
+                                        shutil.rmtree(ispath)
+                                    # shutil.move('Files/tenant_api/'+folderpath, fullpath, copy_function = shutil.copytree)
+                                    # os.replace(updatePath, fullpath)
+                                    shutil.move(updatePath, fullpath)
+                                    
+                                    if request.status_code  == 200:
+                                        r =requests.post(baseurl_status, json=data, headers=headers)
+                                        if r.status_code==200:
+                                            create_txt_path=f'{filename_date}.txt'
+                                            f = open('logs/updaterLog'+create_txt_path, "a")
+                                            f.write(f'{date} - ({fullpath}), updated.\n')
+                                            f.close()
+                                        else:
+                                            create_txt_path=f'{filename_date}.txt'
+                                            f = open('logs/updaterLog'+create_txt_path, "a")
+                                            f.write(f'{date} - Error update.\r\n')
+                                            f.close()
+                            # For linux
+                            else:
+                                stat = os.stat(fullpath)
+                                try:
+                                    return stat.st_birthtime
+                                except AttributeError:
+                                    # We're probably on Linux. No easy way to get creation dates here,
+                                    # so we'll settle for when its content was last modified.
+                                    return stat.st_mtime
+                            
+                            
+
+print(fileupdater())
+
              

@@ -18,6 +18,25 @@ import configparser
 import fnmatch
 import logging
 from PIL import Image
+import psutil
+import zipfile
+
+# kill process when double run the program
+process_to_kill = "ProjectUNO.exe"
+
+# get PID of the current process
+my_pid = os.getpid()
+
+# iterate through all running processes
+for p in psutil.process_iter():
+	try:
+		# if it's process we're looking for...
+		if p.name() == process_to_kill:
+			# and if the process has a different PID than the current process, kill it
+			if not p.pid == my_pid:
+				p.terminate()
+	except psutil.AccessDenied:
+		continue
 
 
 # Create and configure logger
@@ -26,6 +45,9 @@ logging.basicConfig(filename="Logs/unoLog/logs.log",
                     filemode='w')
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
+
+#global variable
+schedule_start_process = True
 
 # set colours
 bg_color = "#f24f00"
@@ -83,7 +105,7 @@ def manual_upload():
 			messagebox.showerror('Error', errors)
 			raise ValueError(errors)
 	except ValueError as ve:
-		logger.exception("Exception occurred: %s", str(ve))\
+		logger.exception("Exception occurred: %s", str(ve))
 		
 #Auto clear cache
 def auto_clear_cache():
@@ -122,79 +144,13 @@ def schedule_start():
 	except ValueError as ve:
 		logger.exception("Exception occurred: %s", str(ve))
 
-
-### API REQUEST
-def fileUpdater():
+#schedule interrupt
+def schedule_stop():
 	try:
-		named_tuple = time.localtime() # get struct_time
-		filename_date = time.strftime("%m%d%Y_%H%M%S", named_tuple)
-		date = time.strftime("%m/%d/%Y, %H:%M:%S", named_tuple)
-
-		#get record from database
-		record = db.fetchSetting()
-		cccode = record[1]
-		ip_server = record[3]
-		port = record[4]
-
-		auth_token='eyJhbGciOiJIUzI1NiJ9.eyJSb2xlIjoiQWRtaW4iLCJJc3N1ZXIiOiJJc3N1ZXIiLCJVc2VybmFtZSI6IkphdmFJblVzZSIsImV4cCI6MTY1NDc1NDg1NCwiaWF0IjoxNjU0NzU0ODU0fQ.p6WAfLuC39cMk3XEF4LcU5iZy1rzbL0VTKVpTY7mRGQ'
-		headers = {'Authorization': f'Bearer {auth_token}'}
-		data = {'cccode' : cccode}
-
-		baseurl = f'http://{ip_server}:{port}/api/get-file'
-		baseurl_status = f'http://{ip_server}:{port}/api/move-file'
-
-		request = requests.post(baseurl, json=data, headers=headers)
-
-		zip = ZipFile(BytesIO(request.content))
-		zip.extractall("Files")
-
-		pattern = ['*.php','*.env','*.db','*.json']
-		path = 'Files'
-
-		for dirpath, dirnames, filenames in os.walk(path):
-
-			if not filenames:
-				continue
-			for ext in pattern:
-				files = fnmatch.filter(filenames, ext)
-				if files:
-					for file in files:
-						Str ='{}/{}'.format(dirpath, file)
-						folderpath = Str[17:100]
-						fullpath = tenantPath+folderpath
-						ispath = Path(fullpath)
-						if ispath.exists() and ispath.is_dir():
-							shutil.rmtree(ispath)
-       
-						currentpath = f'{Path().absolute()}/Files/tenant_api/{folderpath}'
-						shutil.move(currentpath, fullpath) # move file to its destination
-      
-						if request.status_code  == 200:
-							r =requests.post(baseurl_status, json=data, headers=headers)
-							if r.status_code==200:
-								create_txt_path=f'{filename_date}.txt'
-								f = open('Logs/updaterLog'+create_txt_path, "a")
-								f.write(f'{date} - ({fullpath}), updated.\n')
-								f.close()
-							else:
-								create_txt_path=f'{filename_date}.txt'
-								f = open('Logs/updaterLog'+create_txt_path, "a")
-								f.write(f'{date} - Error update.\n')
-								f.close()
-
-	except Exception as e:
-   		logger.error('Error at %s', 'Updater', exc_info=e)
-
-def clear_widgets(frame):
-	# select all frame widgets and delete them
-	for widget in frame.winfo_children():
-		widget.destroy()
-
-def update(cccode,ip_server,pos_vendor_code, port):
-	if cccode == '' or ip_server == '' or pos_vendor_code == '' or port == '':
-		messagebox.showerror('Required Fields', 'Please include all fields')
-		return
-	return db.update(1, cccode, ip_server, pos_vendor_code, port)
+		process = subprocess.Popen(f"cd {tenantPath} && php artisan schedule:interrupt", shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+		output, error = process.communicate()
+	except ValueError as ve:
+		logger.exception("Exception occurred: %s", str(ve))
 
 #Ping
 def ping2(host):
@@ -219,6 +175,94 @@ def telnet2(ip, port):
 		return True
 	except:
 		return False 
+
+
+### API REQUEST
+def fileUpdater():
+	try:
+		named_tuple = time.localtime() # get struct_time
+		filename_date = time.strftime("%m%d%Y_%H%M%S", named_tuple)
+		date = time.strftime("%m/%d/%Y, %H:%M:%S", named_tuple)
+
+		#get record from database
+		record = db.fetchSetting()
+		cccode = record[1]
+		ip_server = record[3]
+		port = record[4]
+
+		auth_token='eyJhbGciOiJIUzI1NiJ9.eyJSb2xlIjoiQWRtaW4iLCJJc3N1ZXIiOiJJc3N1ZXIiLCJVc2VybmFtZSI6IkphdmFJblVzZSIsImV4cCI6MTY1NDc1NDg1NCwiaWF0IjoxNjU0NzU0ODU0fQ.p6WAfLuC39cMk3XEF4LcU5iZy1rzbL0VTKVpTY7mRGQ'
+		headers = {'Authorization': f'Bearer {auth_token}'}
+		data = {'cccode' : cccode}
+
+		baseurl = f'http://{ip_server}:{port}/api/get-file'
+		baseurl_status = f'http://{ip_server}:{port}/api/move-file'
+
+		#set global schedule_start_process to false
+		global schedule_start_process
+		schedule_start_process = False
+
+		#stop the schedule first before update the file
+		schedule_stop()
+
+		result = telnet2(ip_server, int(port)) 
+		if result:
+			request = requests.post(baseurl, json=data, headers=headers)
+			if zipfile.is_zipfile(BytesIO(request.content)):
+				zip = ZipFile(BytesIO(request.content))
+				zip.extractall("Files")
+
+				pattern = ['*.php','*.env','*.db','*.json']
+				path = 'Files'
+
+				for dirpath, dirnames, filenames in os.walk(path):
+
+					if not filenames:
+						continue
+					for ext in pattern:
+						files = fnmatch.filter(filenames, ext)
+						if files:
+							for file in files:
+								Str ='{}/{}'.format(dirpath, file)
+								folderpath = Str[17:100]
+								fullpath = tenantPath+folderpath
+								updatePath = f'{Path().absolute()}/Files/tenant_api/{folderpath}'
+								if platform.system() == 'Windows':
+									updatedsize = os.path.getsize(updatePath)
+									currentsize = os.path.getsize(fullpath)
+									if updatedsize != currentsize:
+										ispath = Path(fullpath)
+										if ispath.exists() and ispath.is_dir():
+											shutil.rmtree(ispath)
+										shutil.move(updatePath, fullpath)
+										if request.status_code  == 200:
+											r =requests.post(baseurl_status, json=data, headers=headers)
+											if r.status_code==200:
+												create_txt_path=f'{filename_date}.txt'
+												f = open('logs/updaterLog'+create_txt_path, "a")
+												f.write(f'{date} - ({fullpath}), updated.\n')
+												f.close()
+											else:
+												create_txt_path=f'{filename_date}.txt'
+												f = open('logs/updaterLog'+create_txt_path, "a")
+												f.write(f'{date} - Error update.\r\n')
+												f.close()
+				#set global schedule_start_process to false
+				global schedule_start_process
+				schedule_start_process = True
+
+	except Exception as e:
+   		logger.error('Error at %s', 'Updater', exc_info=e)
+
+def clear_widgets(frame):
+	# select all frame widgets and delete them
+	for widget in frame.winfo_children():
+		widget.destroy()
+
+def update(cccode,ip_server,pos_vendor_code, port):
+	if cccode == '' or ip_server == '' or pos_vendor_code == '' or port == '':
+		messagebox.showerror('Required Fields', 'Please include all fields')
+		return
+	return db.update(1, cccode, ip_server, pos_vendor_code, port)
 
 def load_frame1():
 	clear_widgets(frame2)
@@ -383,7 +427,7 @@ label1 = Label(root, image=img,bg=bg_color)
 label1.image = img
 label1.grid(row=1, column=0,pady=1, padx=10, sticky=W)
 
-version = Label(root, text='v2.0.2',bg=bg_color,fg="white")
+version = Label(root, text='v2.1.0',bg=bg_color,fg="white")
 version.grid(row=1, column=1,sticky='e')
 
 # place app in the center of the screen (alternative approach to root.eval())
@@ -440,8 +484,9 @@ load_frame1()
 try:
 	schedule.every(schedule_setting).minutes.do(load_frame1)
 	schedule.every(schedule_updater).minutes.do(fileUpdater)
-	schedule.every(scheduleStart).seconds.do(schedule_start)
-	schedule.every(5).minutes.do(auto_clear_cache)
+	if schedule_start_process:
+		schedule.every(scheduleStart).seconds.do(schedule_start)
+		schedule.every(1).hour.do(auto_clear_cache)
 
 	def check_schedule():
 		while True:
@@ -451,6 +496,11 @@ try:
 	threading.Thread(target=check_schedule, daemon=True).start()
 except Exception as e:
    logger.error('Error at %s', 'Scheduler', exc_info=e)
+
+logging.getLogger('schedule').setLevel(logging.WARNING)
+logging.getLogger("requests").setLevel(logging.WARNING)
+logging.getLogger("urllib3").setLevel(logging.WARNING)
+
 
 def minimizeWindow():
     root.withdraw()

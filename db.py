@@ -29,9 +29,14 @@ class Database:
         self.conn.commit()
 
     def update(self, id, cccode, ip_server, pos_vendor_code, port):
+        bad_chars = ['.',';', ':', '!', "*", " ", "#", "(", ")", "=", "-", "$", "&", "%", "@", "/", "|"]
+        code=""
+        for i in cccode:
+            if i not in bad_chars:
+                code+=i
         try:
             self.cur.execute("UPDATE settings SET cccode = ?, pos_vendor_code = ?, autopoll_ip_server = ?, port=? WHERE id = ?",
-                            (cccode, pos_vendor_code, ip_server, port, id))
+                            (str(code), pos_vendor_code, ip_server, port, id))
             self.conn.commit()
             messagebox.showinfo('Success', 'Settings Updated!')
         except:

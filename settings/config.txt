@@ -5,10 +5,10 @@
 tenant_path=C:\xampp\htdocs\tenant_api\ 
 
 #schedule task per second
-schedule_start=5
+schedule_start=10
 
 #schedule updater per minute
-schedule_updater=1
+schedule_updater=60
 
 #schedule setting per minute
 schedule_setting=1
