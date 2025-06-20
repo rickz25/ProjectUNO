@@ -59,6 +59,9 @@ fg_color_text = "#686C68"
 config = configparser.ConfigParser()
 config.read(r'settings/config.txt') 
 tenantPath =  config.get('tenant_config', 'tenant_path')
+isExist = os.path.isdir(tenantPath)
+if not isExist:
+	messagebox.showerror('Error', 'Tenant path not found!')
 db = Database(f'{tenantPath}database/database.db')
 
 scheduleStart =  config.get('tenant_config', 'schedule_start')
@@ -87,25 +90,33 @@ def manual_upload():
 		c2='php artisan config:clear'
 		c3='php artisan cache:clear'
 		c4='php artisan route:cache'
+		command = f"cd {tenantPath} && {c1} && {c2} && {c3} && {c4}"
+		run_command = f"cd {tenantPath} && php artisan schedule:run"
 
-		# exit_code = os.system(f'cmd /c "cd {tenantPath} && {c1} && {c2} && {c3} && {c4}"')
- 	
-		process = subprocess.Popen(f"cd {tenantPath} && {c1} && {c2} && {c3} && {c4}", shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-		output, errors = process.communicate()
-		
-		if errors==None:
-			proc = subprocess.Popen(f"cd {tenantPath} && php artisan schedule:run", shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-			out, err = proc.communicate()
-			if err==None:
-				messagebox.showinfo('Success', 'Started manually!')
+		isExist = os.path.isdir(tenantPath)
+		if isExist:
+			process = subprocess.Popen(command, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+			output, errors = process.communicate()
+
+			time.sleep(10)  # wait for the cache to clear
+			
+			if errors==None:
+				messagebox.showinfo('Success', 'Clear Cache Successful!')
+				proc = subprocess.Popen(run_command, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+				out, err = proc.communicate()
+				if err==None:
+					messagebox.showinfo('Success', 'Started manually!')
+				else:
+					messagebox.showerror('Error', err)
+					raise ValueError(err)
 			else:
-				messagebox.showerror('Error', err)
+				messagebox.showerror('Error', errors)
 				raise ValueError(errors)
 		else:
-			messagebox.showerror('Error', errors)
-			raise ValueError(errors)
+			messagebox.showerror('Error', 'Tenant path not found!')
 	except ValueError as ve:
 		logger.exception("Exception occurred: %s", str(ve))
+		messagebox.showinfo('Error', str(ve))
 		
 #Auto clear cache
 def auto_clear_cache():
@@ -127,7 +138,7 @@ def auto_clear_cache():
 				messagebox.showerror('Error', err)
 				raise ValueError(errors)
 		else:
-			messagebox.showerror('Error', errors)
+			messagebox.showerror('Error', "Error on clear cache, please check the PHP Path.")
 			raise ValueError(errors)
 	except ValueError as ve:
 		logger.exception("Exception occurred: %s", str(ve))
@@ -140,6 +151,7 @@ def schedule_start():
 		if error==None:
 			print('started')
 		else:
+			messagebox.showerror('Error', "Error started, please check the PHP Path.")
 			raise ValueError("Error started.")
 	except ValueError as ve:
 		logger.exception("Exception occurred: %s", str(ve))
@@ -202,7 +214,7 @@ def fileUpdater():
 		schedule_start_process = False
 
 		#stop the schedule first before update the file
-		schedule_stop()
+		# schedule_stop()
 
 		result = telnet2(ip_server, int(port)) 
 		if result:
@@ -246,9 +258,8 @@ def fileUpdater():
 												f = open('logs/updaterLog'+create_txt_path, "a")
 												f.write(f'{date} - Error update.\r\n')
 												f.close()
-				#set global schedule_start_process to false
-				global schedule_start_process
-				schedule_start_process = True
+		#set global schedule_start_process to true
+		schedule_start_process = True
 
 	except Exception as e:
    		logger.error('Error at %s', 'Updater', exc_info=e)
@@ -427,7 +438,7 @@ label1 = Label(root, image=img,bg=bg_color)
 label1.image = img
 label1.grid(row=1, column=0,pady=1, padx=10, sticky=W)
 
-version = Label(root, text='v2.1.0',bg=bg_color,fg="white")
+version = Label(root, text='v2.3.2',bg=bg_color,fg="white")
 version.grid(row=1, column=1,sticky='e')
 
 # place app in the center of the screen (alternative approach to root.eval())
@@ -501,17 +512,16 @@ logging.getLogger('schedule').setLevel(logging.WARNING)
 logging.getLogger("requests").setLevel(logging.WARNING)
 logging.getLogger("urllib3").setLevel(logging.WARNING)
 
+# def minimizeWindow():
+#     root.withdraw()
+#     root.overrideredirect(False)
+#     root.iconify()
 
-def minimizeWindow():
-    root.withdraw()
-    root.overrideredirect(False)
-    root.iconify()
+# def disable_event():
+#     pass
 
-def disable_event():
-    pass
-
-root.resizable(False, False)
-root.protocol("WM_DELETE_WINDOW", minimizeWindow)
+# root.resizable(False, False)
+# root.protocol("WM_DELETE_WINDOW", minimizeWindow)
 
 # run app
 root.mainloop()

@@ -1,7 +1,5 @@
 import sqlite3
 from tkinter import messagebox
-
-
 class Database:
     def __init__(self, db):
         self.conn = sqlite3.connect(db,check_same_thread=False)
@@ -41,5 +39,3 @@ class Database:
             messagebox.showinfo('Success', 'Settings Updated!')
         except:
             messagebox.showerror('Error','Error Updating.')
-    def __del__(self):
-        self.conn.close()
